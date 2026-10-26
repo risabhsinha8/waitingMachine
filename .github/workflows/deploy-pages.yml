@@ -1,0 +1,74 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; let an in-flight one finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the version the app is developed and tested on; fl_chart is
+      # capped below 1.1 for this Flutter (see pubspec.yaml).
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.32.6
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      # Project sites live under /<repo>/; a <user>.github.io repo or a custom
+      # domain serves from /. Set the BASE_HREF repository variable to override.
+      - name: Work out the base path
+        id: base
+        env:
+          REPO: ${{ github.event.repository.name }}
+          OVERRIDE: ${{ vars.BASE_HREF }}
+        run: |
+          if [[ -n "$OVERRIDE" ]]; then
+            href="$OVERRIDE"
+          elif [[ "$REPO" == *.github.io ]]; then
+            href="/"
+          else
+            href="/$REPO/"
+          fi
+          echo "Base href: $href"
+          echo "href=$href" >> "$GITHUB_OUTPUT"
+
+      # No service worker, so visitors always get the latest deploy instead of
+      # a cached build.
+      - run: >-
+          flutter build web --release
+          --base-href "${{ steps.base.outputs.href }}"
+          --pwa-strategy=none
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
