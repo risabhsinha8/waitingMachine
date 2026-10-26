@@ -7,6 +7,7 @@ import '../../state/app_state_scope.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/haptics.dart';
 import '../../utils/units.dart';
+import '../../widgets/layout.dart';
 import '../../widgets/make_room_sheet.dart';
 import '../../widgets/quick_log.dart';
 import 'archived_predictions.dart';
@@ -56,15 +57,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
     };
 
     final items = <Widget>[
-      Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: TimelineChart(
-          predictions: active,
-          smoothed: app.smoothedWeights,
-          unit: app.unit,
-          now: now,
-        ),
-      ),
+      // The answer first: which timeline reality is on.
       TimelineHero(
         evaluation: evaluation,
         predictions: active,
@@ -75,11 +68,28 @@ class _ArenaScreenState extends State<ArenaScreen> {
         onCreatePrediction: widget.onCreatePrediction,
         onLogWeight: () => showQuickLogSheet(context),
       ),
+      Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: TimelineChart(
+          predictions: active,
+          smoothed: app.smoothedWeights,
+          unit: app.unit,
+          now: now,
+        ),
+      ),
       const CheckpointsBar(),
       if (active.isNotEmpty)
         _ArenaHeader(active: active, ranked: evaluation != null),
-      for (final p in ranked)
-        _card(context, app, p, evaluations[p.id], evaluation, now),
+      for (final (i, p) in ranked.indexed)
+        _card(
+          context,
+          app,
+          p,
+          evaluations[p.id],
+          evaluation,
+          now,
+          rank: evaluation == null ? null : i + 1,
+        ),
       if (archived.isNotEmpty) ...[
         ArchiveHeader(
           count: archived.length,
@@ -99,7 +109,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
       ),
       body: ListView.builder(
         key: const Key('arena-list'),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: contentPadding(context),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         itemCount: items.length,
         itemBuilder: (context, index) => items[index],
@@ -113,8 +123,9 @@ class _ArenaScreenState extends State<ArenaScreen> {
     PredictionSnapshot p,
     PredictionEvaluation? e,
     PredictionMatchResult? evaluation,
-    DateTime now,
-  ) {
+    DateTime now, {
+    int? rank,
+  }) {
     return Padding(
       key: ValueKey('arena-item-${p.id}'),
       padding: const EdgeInsets.only(bottom: 12),
@@ -127,6 +138,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
         child: PredictionCard(
           key: ValueKey('prediction-card-${p.id}'),
           prediction: p,
+          rank: e == null ? null : rank,
           evaluation: e,
           asOf: evaluation?.asOf,
           now: now,
@@ -362,7 +374,9 @@ class _SwipeAction extends StatelessWidget {
         padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(destructive ? 16 : 20),
+          borderRadius: BorderRadius.circular(
+            destructive ? 16 : AppTheme.cardRadius,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -399,7 +413,7 @@ class _ArenaHeader extends StatelessWidget {
     final taken = {for (final p in active) ?p.colorSlot};
     const max = AppState.maxActivePredictions;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 24, 4, 12),
+      padding: const EdgeInsets.fromLTRB(4, 28, 4, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

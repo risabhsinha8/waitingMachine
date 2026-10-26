@@ -6,6 +6,7 @@ import '../services/demo_data.dart';
 import '../state/app_state_scope.dart';
 import '../ui/haptics.dart';
 import '../ui/keyboard.dart';
+import '../theme/app_theme.dart';
 import '../ui/labels.dart';
 import 'confirm_dialog.dart';
 
@@ -163,9 +164,21 @@ class _ProfileSheetState extends State<ProfileSheet> {
     messenger.showSnackBar(const SnackBar(content: Text('All data cleared')));
   }
 
+  /// Whether this is the first-launch setup rather than an edit.
+  late final bool _firstRun = AppStateScope.read(context).userProfile == null;
+
+  Widget _demoButton({ButtonStyle? style}) => OutlinedButton.icon(
+    key: const Key('load-demo'),
+    onPressed: _loadDemo,
+    style: style,
+    icon: const Icon(Icons.science_outlined),
+    label: const Text('Load Realistic 30-Day Demo Data'),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final digits = [FilteringTextInputFormatter.digitsOnly];
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -182,6 +195,20 @@ class _ProfileSheetState extends State<ProfileSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_firstRun) ...[
+                _Welcome(
+                  onLoadDemo: _demoButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: scheme.onPrimaryContainer,
+                      side: BorderSide(
+                        color: scheme.onPrimaryContainer.withValues(alpha: 0.5),
+                      ),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               Text('Your baseline', style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(
@@ -282,37 +309,98 @@ class _ProfileSheetState extends State<ProfileSheet> {
               FilledButton(
                 key: const Key('profile-save'),
                 onPressed: _save,
-                child: const Text('Save'),
-              ),
-              const Divider(height: 40),
-              Text('Data', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 4),
-              Text(
-                'Try the app with a month of sample history, or start over.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
                 ),
+                child: Text(_firstRun ? 'Get started' : 'Save'),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                key: const Key('load-demo'),
-                onPressed: _loadDemo,
-                icon: const Icon(Icons.science_outlined),
-                label: const Text('Load Realistic 30-Day Demo Data'),
-              ),
-              const SizedBox(height: 4),
-              TextButton.icon(
-                key: const Key('reset-all'),
-                onPressed: _resetAll,
-                style: TextButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,
+              if (!_firstRun) ...[
+                const Divider(height: 40),
+                Text('Data', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 4),
+                Text(
+                  'Try the app with a month of sample history, or start '
+                  'over. Everything stays on this device.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
-                icon: const Icon(Icons.delete_forever_outlined),
-                label: const Text('Reset All Data'),
-              ),
+                const SizedBox(height: 12),
+                _demoButton(),
+                const SizedBox(height: 4),
+                TextButton.icon(
+                  key: const Key('reset-all'),
+                  onPressed: _resetAll,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  label: const Text('Reset All Data'),
+                ),
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// First-launch intro: what the app does, and a shortcut to demo data.
+class _Welcome extends StatelessWidget {
+  const _Welcome({required this.onLoadDemo});
+
+  final Widget onLoadDemo;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    Widget step(IconData icon, String text) => Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: scheme.onPrimaryContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Welcome to Losertown',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
+          step(Icons.tune, 'Simulate calories and activity'),
+          step(Icons.lock_outline, 'Lock in predictions'),
+          step(Icons.emoji_events_outlined, 'See which one reality tracks'),
+          const SizedBox(height: 16),
+          Text(
+            'Just looking around?',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(height: 8),
+          onLoadDemo,
+        ],
       ),
     );
   }

@@ -6,6 +6,8 @@ import '../../state/simulator_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/labels.dart';
 import '../../utils/units.dart';
+import '../../widgets/layout.dart';
+import 'projection_chart.dart';
 
 class ProjectionHeader extends StatelessWidget {
   const ProjectionHeader({super.key, required this.controller});
@@ -14,29 +16,53 @@ class ProjectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 24, 4, 12),
+    final c = controller;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(
+          title: '${c.weeks}-week projection',
+          trailing: const Caption('Burn updates as you lose'),
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 20, 16, 8),
+            child: ProjectionChart(
+              key: const Key('projection-chart'),
+              points: c.points,
+              milestones: c.milestones,
+              unit: c.unit,
+              targetWeightKg: c.targetWeightKg,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const _ColumnLabels(),
+      ],
+    );
+  }
+}
+
+/// Column captions above the weekly rows.
+class _ColumnLabels extends StatelessWidget {
+  const _ColumnLabels();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(14, 0, 14, 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(
-            child: Text(
-              '${controller.weeks}-week projection',
-              style: theme.textTheme.titleMedium,
-            ),
-          ),
-          Text(
-            'TDEE updates as you lose',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          SizedBox(width: _weekColumnWidth, child: Eyebrow('Week')),
+          Expanded(child: Eyebrow('Projected')),
+          Eyebrow('Change · Burn'),
         ],
       ),
     );
   }
 }
+
+const double _weekColumnWidth = 52;
 
 /// One week of the projection.
 class ProjectionRow extends StatelessWidget {
@@ -65,18 +91,25 @@ class ProjectionRow extends StatelessWidget {
         scheme.secondaryContainer,
         scheme.onSecondaryContainer,
       ),
-      null => (scheme.surfaceContainerLow, scheme.onSurface),
+      null => (Colors.transparent, scheme.onSurface),
     };
     final muted = milestone == null
         ? scheme.onSurfaceVariant
         : foreground.withValues(alpha: 0.75);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      margin: EdgeInsets.symmetric(vertical: milestone == null ? 0 : 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),
+        border: milestone == null
+            ? Border(
+                bottom: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.4),
+                ),
+              )
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -84,22 +117,13 @@ class ProjectionRow extends StatelessWidget {
           Row(
             children: [
               SizedBox(
-                width: 52,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'WEEK',
-                      style: theme.textTheme.labelSmall?.copyWith(color: muted),
-                    ),
-                    Text(
-                      isStart ? 'Now' : '${point.weekNumber}',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: foreground,
-                        fontFeatures: tabularFigures,
-                      ),
-                    ),
-                  ],
+                width: _weekColumnWidth,
+                child: Text(
+                  isStart ? 'Now' : '${point.weekNumber}',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: isStart ? foreground : muted,
+                    fontFeatures: tabularFigures,
+                  ),
                 ),
               ),
               Expanded(
@@ -107,16 +131,16 @@ class ProjectionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      projectionDate.format(point.date),
-                      style: theme.textTheme.bodySmall?.copyWith(color: muted),
-                    ),
-                    Text(
                       Units.format(point.projectedWeightKg, unit),
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: foreground,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         fontFeatures: tabularFigures,
                       ),
+                    ),
+                    Text(
+                      projectionDate.format(point.date),
+                      style: theme.textTheme.bodySmall?.copyWith(color: muted),
                     ),
                   ],
                 ),
@@ -132,7 +156,7 @@ class ProjectionRow extends StatelessWidget {
                         ),
                   const SizedBox(height: 4),
                   Text(
-                    'TDEE ${formatKcal(point.dynamicTdee)}',
+                    formatKcal(point.dynamicTdee),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: muted,
                       fontFeatures: tabularFigures,
@@ -144,7 +168,7 @@ class ProjectionRow extends StatelessWidget {
           ),
           if (milestone case final m?)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 8, left: _weekColumnWidth),
               child: Row(
                 children: [
                   Icon(
@@ -160,6 +184,7 @@ class ProjectionRow extends StatelessWidget {
                       _milestoneLabel(m),
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: foreground,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),

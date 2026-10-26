@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../state/simulator_controller.dart';
 import '../../widgets/baseline_chip.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/layout.dart';
 import '../../widgets/profile_sheet.dart';
 import '../../widgets/quick_log.dart';
 import 'lock_in.dart';
@@ -32,7 +33,7 @@ class SimulatorScreen extends StatefulWidget {
 }
 
 class _SimulatorScreenState extends State<SimulatorScreen> {
-  static const double _controlsWidth = 400;
+  static const double _controlsWidth = 420;
 
   /// Leaves room for the Lock In FAB below the last row.
   static const double _fabClearance = 96;
@@ -155,7 +156,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         key: const Key('projection-list'),
         controller: _narrowScroll,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, _fabClearance),
+        padding: contentPadding(context, bottom: _fabClearance),
         itemCount: points.length + 2,
         itemBuilder: (context, index) => switch (index) {
           0 => _controls(),
@@ -195,7 +196,7 @@ class _SimulatorScreenState extends State<SimulatorScreen> {
           child: ListView.builder(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             key: const Key('projection-list'),
-            padding: const EdgeInsets.fromLTRB(8, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(8, 0, 24, 24),
             itemCount: points.length + 1,
             itemBuilder: (context, index) => index == 0
                 ? ProjectionHeader(controller: _controller)

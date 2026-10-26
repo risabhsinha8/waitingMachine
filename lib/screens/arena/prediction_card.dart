@@ -23,9 +23,13 @@ class PredictionCard extends StatelessWidget {
     required this.onTap,
     required this.onAction,
     this.checkpoints = const [],
+    this.rank,
   });
 
   final PredictionSnapshot prediction;
+
+  /// 1 for the closest match to reality; null when nothing is ranked yet.
+  final int? rank;
 
   /// Null when there are no weigh-ins to compare against.
   final PredictionEvaluation? evaluation;
@@ -53,53 +57,56 @@ class PredictionCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 4, 16),
+          padding: const EdgeInsets.fromLTRB(18, 8, 4, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
+                  if (rank case final r?) ...[
+                    _RankPill(rank: r),
+                    const SizedBox(width: 10),
+                  ],
+                  // Keys the card to its line on the chart.
+                  if (p.colorSlot case final slot?) ...[
+                    SeriesKey(
+                      key: const Key('card-series-key'),
+                      color: SeriesColors.of(context, slot),
+                      dash: seriesDash(slot),
+                      width: 3,
+                      length: 18,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            // Keys the card to its line on the chart.
-                            if (p.colorSlot case final slot?) ...[
-                              SeriesKey(
-                                key: const Key('card-series-key'),
-                                color: SeriesColors.of(context, slot),
-                                dash: seriesDash(slot),
-                                width: 3,
-                                length: 18,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Flexible(
-                              child: Text(
-                                p.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          'Created ${projectionDate.format(p.createdAt)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      p.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  if (e != null) DriftBadge(status: e.adherenceStatus),
                   _ActionsMenu(canReanchor: canReanchor, onAction: onAction),
                 ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (e != null) DriftBadge(status: e.adherenceStatus),
+                    Text(
+                      'Created ${projectionDate.format(p.createdAt)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 10),
               Padding(
@@ -414,6 +421,40 @@ class _Metric extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// "#1" for the prediction reality is tracking closest, "#2" next, …
+class _RankPill extends StatelessWidget {
+  const _RankPill({required this.rank});
+
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final first = rank == 1;
+    return Semantics(
+      label: 'Rank $rank',
+      excludeSemantics: true,
+      child: Container(
+        key: const Key('rank-pill'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: first ? scheme.primary : scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          '#$rank',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: first ? scheme.onPrimary : scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w800,
+            fontFeatures: tabularFigures,
+          ),
+        ),
       ),
     );
   }

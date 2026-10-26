@@ -6,44 +6,152 @@ abstract final class AppTheme {
   static ThemeData light() => _build(Brightness.light);
   static ThemeData dark() => _build(Brightness.dark);
 
+  /// Corner radius for cards and other large surfaces.
+  static const double cardRadius = 24;
+
+  /// Content never stretches wider than this on tablets and desktops.
+  static const double maxContentWidth = 720;
+
   static ThemeData _build(Brightness brightness) {
+    final light = brightness == Brightness.light;
     final scheme = ColorScheme.fromSeed(
       seedColor: seed,
       brightness: brightness,
+      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+    );
+    final base = ThemeData(brightness: brightness, useMaterial3: true);
+    // ThemeData only fills in font sizes when the theme is localized, so add
+    // them here: styles handed straight to components (the app bar title,
+    // nav labels) would otherwise fall back to 14px.
+    final sized = Typography.englishLike2021.merge(base.textTheme);
+    final text = sized.copyWith(
+      headlineMedium: sized.headlineMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
+      ),
+      headlineSmall: sized.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.3,
+      ),
+      titleLarge: sized.titleLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+      ),
+      titleMedium: sized.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      titleSmall: sized.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+      labelSmall: sized.labelSmall?.copyWith(letterSpacing: 0.3),
+    );
+    final rounded = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
     );
     return ThemeData(
       useMaterial3: true,
-      extensions: [
-        brightness == Brightness.light ? StatusColors.light : StatusColors.dark,
-      ],
+      brightness: brightness,
+      extensions: [light ? StatusColors.light : StatusColors.dark],
       colorScheme: scheme,
+      textTheme: text,
       scaffoldBackgroundColor: scheme.surface,
+      splashFactory: InkSparkle.splashFactory,
+      visualDensity: VisualDensity.standard,
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         centerTitle: false,
+        titleSpacing: 20,
+        titleTextStyle: text.headlineSmall?.copyWith(color: scheme.onSurface),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
         color: scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(cardRadius),
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: light ? 0.6 : 0.3),
+          ),
+        ),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        side: BorderSide(color: scheme.outlineVariant),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: rounded,
+          textStyle: text.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(shape: rounded),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: scheme.primary,
+          selectedForegroundColor: scheme.onPrimary,
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
       ),
       sliderTheme: const SliderThemeData(
         showValueIndicator: ShowValueIndicator.never,
+        // The 2024 Material slider: a bar handle and a thicker track.
+        // ignore: deprecated_member_use
+        year2023: false,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
+        ),
       ),
-      snackBarTheme: const SnackBarThemeData(
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: scheme.surfaceContainer,
+        height: 72,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => text.labelMedium?.copyWith(
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w700
+                : FontWeight.w500,
+          ),
+        ),
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: scheme.surfaceContainer,
+        labelType: NavigationRailLabelType.all,
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: scheme.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        constraints: const BoxConstraints(maxWidth: 640),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant.withValues(alpha: 0.6),
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
       ),
     );
   }

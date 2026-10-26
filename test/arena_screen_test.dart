@@ -315,6 +315,9 @@ void main() {
         tester,
       ).lineBarsData.where((b) => b.dashArray != null).length;
       final crash = arena.ids['Crash 1200']!;
+      // The chart sits below the timeline hero.
+      await tester.ensureVisible(find.byKey(ValueKey('chart-filter-$crash')));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(ValueKey('chart-filter-$crash')));
       await tester.pumpAndSettle();

@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../ui/haptics.dart';
 import '../../ui/labels.dart';
 import '../../utils/units.dart';
+import '../../widgets/layout.dart';
 import '../../widgets/numeric_entry_dialog.dart';
 
 /// The calorie slider ticks a haptic every this many kcal.
@@ -31,7 +32,7 @@ class SimulatorControls extends StatelessWidget {
     final c = controller;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -86,7 +87,8 @@ class SimulatorControls extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            _PaceHint(controller: c),
+            const SizedBox(height: 20),
             Text('Activity level', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             Wrap(
@@ -96,6 +98,7 @@ class SimulatorControls extends StatelessWidget {
                 for (final level in ActivityLevel.values)
                   ChoiceChip(
                     key: Key('activity-${level.name}'),
+                    showCheckmark: false,
                     label: Text(level.label),
                     tooltip: '${level.description} (×${level.multiplier})',
                     selected: c.activityLevel == level,
@@ -103,7 +106,7 @@ class SimulatorControls extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               c.activityLevel.description,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -112,7 +115,7 @@ class SimulatorControls extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _TargetSection(controller: c),
-            const Divider(height: 24),
+            const SizedBox(height: 8),
             _Summary(controller: c),
             const SizedBox(height: 16),
             FilledButton.icon(
@@ -121,7 +124,7 @@ class SimulatorControls extends StatelessWidget {
               icon: const Icon(Icons.lock_outline),
               label: const Text('Lock In Prediction'),
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(52),
               ),
             ),
             if (!AppStateScope.of(context).hasRoomInArena) ...[
@@ -176,7 +179,7 @@ class _LabeledSlider extends StatelessWidget {
                 valueText,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   fontFeatures: tabularFigures,
                 ),
               ),
@@ -261,7 +264,10 @@ class _TargetSection extends StatelessWidget {
         SwitchListTile(
           key: const Key('target-switch'),
           contentPadding: EdgeInsets.zero,
-          title: const Text('Target weight'),
+          title: Text(
+            'Target weight',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           subtitle: const Text('Hold at maintenance once reached'),
           value: target != null,
           onChanged: (on) {
@@ -285,6 +291,7 @@ class _TargetSection extends StatelessWidget {
   }
 }
 
+/// The headline result of the current inputs, with the numbers behind it.
 class _Summary extends StatelessWidget {
   const _Summary({required this.controller});
 
@@ -292,12 +299,15 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final c = controller;
     final points = c.points;
     final tdeeNow = points.first.dynamicTdee;
     final balance = c.dailyCalories - tdeeNow;
     final end = points.last;
     final reached = c.targetReachedAt;
+    final firstWeek = points.length > 1 ? points[1].weeklyChangeKg : 0.0;
 
     final (
       outcomeLabel,
@@ -320,30 +330,128 @@ class _Summary extends StatelessWidget {
       ),
       _ => ('Target', 'Not reached', 'in ${c.weeks} weeks'),
     };
+    final onPanel = scheme.onPrimaryContainer;
 
-    return Row(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            key: const Key('summary-outcome'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Eyebrow(outcomeLabel, color: onPanel.withValues(alpha: 0.75)),
+              const SizedBox(height: 2),
+              Wrap(
+                spacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    outcomeValue,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: onPanel,
+                      fontFeatures: tabularFigures,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: onPanel.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      outcomeDetail,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: onPanel,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: tabularFigures,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: onPanel.withValues(alpha: 0.15)),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _Stat(
+                  label: 'Burn today',
+                  value: formatKcal(tdeeNow),
+                  color: onPanel,
+                ),
+              ),
+              Expanded(
+                child: _Stat(
+                  label: balance <= 0 ? 'Deficit / day' : 'Surplus / day',
+                  value: formatKcal(balance.abs()),
+                  color: onPanel,
+                ),
+              ),
+              Expanded(
+                child: _Stat(
+                  label: 'First week',
+                  value: Units.format(
+                    firstWeek,
+                    c.unit,
+                    decimals: 2,
+                    signed: true,
+                  ),
+                  color: onPanel,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value, required this.color});
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _Stat(
-            label: 'Burn today',
-            value: formatKcal(tdeeNow),
-            detail: 'TDEE',
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: color.withValues(alpha: 0.75),
           ),
         ),
-        Expanded(
-          child: _Stat(
-            label: balance <= 0 ? 'Deficit' : 'Surplus',
-            value: formatKcal(balance.abs()),
-            detail: 'per day',
-          ),
-        ),
-        Expanded(
-          child: _Stat(
-            key: const Key('summary-outcome'),
-            label: outcomeLabel,
-            value: outcomeValue,
-            detail: outcomeDetail,
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontFeatures: tabularFigures,
+            ),
           ),
         ),
       ],
@@ -351,42 +459,88 @@ class _Summary extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.detail,
-  });
+/// Live feedback under the calorie slider on how hard the plan is.
+class _PaceHint extends StatelessWidget {
+  const _PaceHint({required this.controller});
 
-  final String label;
-  final String value;
-  final String detail;
+  /// Below this, intake needs medical supervision.
+  static const double _minSafeCalories = 1200;
+
+  /// Losing more than this fraction of body weight a week is aggressive.
+  static const double _aggressiveWeeklyFraction = 0.01;
+
+  final SimulatorController controller;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final muted = theme.colorScheme.onSurfaceVariant;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelMedium?.copyWith(color: muted)),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            fontFeatures: tabularFigures,
-          ),
+    final scheme = theme.colorScheme;
+    final status = StatusColors.of(context);
+    final c = controller;
+    final change = c.points.length > 1 ? c.points[1].weeklyChangeKg : 0.0;
+    final rate =
+        '${Units.format(change, c.unit, decimals: 2, signed: true)}/week';
+    final fraction = -change / c.startWeightKg;
+
+    final (IconData icon, Color fg, String text) = switch (change) {
+      _ when c.dailyCalories < _minSafeCalories => (
+        Icons.error_outline,
+        status.onBad,
+        'Under ${formatKcal(_minSafeCalories)}/day: only with medical '
+            'supervision',
+      ),
+      _ when fraction > _aggressiveWeeklyFraction => (
+        Icons.warning_amber_rounded,
+        status.onWarn,
+        '$rate · over 1% of body weight a week is hard to sustain',
+      ),
+      _ when fraction > 0.001 => (
+        Icons.check_circle_outline,
+        status.onGood,
+        '$rate · a sustainable pace',
+      ),
+      _ when change > 0.005 => (
+        Icons.north_east,
+        scheme.onSurfaceVariant,
+        rate,
+      ),
+      _ => (Icons.balance, scheme.onSurfaceVariant, 'About maintenance'),
+    };
+    final background = fg == status.onBad
+        ? status.bad
+        : fg == status.onWarn
+        ? status.warn
+        : fg == status.onGood
+        ? status.good
+        : scheme.surfaceContainerHighest;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: AnimatedContainer(
+        key: const Key('pace-hint'),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.fromLTRB(8, 5, 12, 5),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(10),
         ),
-        Text(
-          detail,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: muted,
-            fontFeatures: tabularFigures,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: fg),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                text,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: fg,
+                  fontFeatures: tabularFigures,
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

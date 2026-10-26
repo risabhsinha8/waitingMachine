@@ -73,7 +73,8 @@ void main() {
     await tester.tap(find.text('Female'));
     await tester.enterText(find.byKey(const Key('profile-age')), '29');
     await tester.enterText(find.byKey(const Key('profile-height-cm')), '165');
-    await tester.tap(find.byKey(const Key('profile-save')));
+    // The welcome intro sits above the form on first launch.
+    await tapVisible(tester, find.byKey(const Key('profile-save')));
     await tester.pumpAndSettle();
 
     expect(

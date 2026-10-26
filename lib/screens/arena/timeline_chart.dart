@@ -59,7 +59,7 @@ class _TimelineChartState extends State<TimelineChart>
     return Card(
       key: const Key('timeline-chart'),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -97,26 +97,31 @@ class _TimelineChartState extends State<TimelineChart>
             const SizedBox(height: 12),
             _Legend(hasRaw: data.rawSpots.isNotEmpty),
             if (widget.predictions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final (i, p) in widget.predictions.indexed)
-                    FilterChip(
-                      key: ValueKey('chart-filter-${p.id}'),
-                      avatar: SeriesKey(
-                        color: SeriesColors.of(context, p.colorSlot ?? i),
-                        dash: seriesDash(p.colorSlot ?? i),
+              const SizedBox(height: 10),
+              // One scrolling row, so the chips never push the card taller.
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                child: Row(
+                  children: [
+                    for (final (i, p) in widget.predictions.indexed) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      FilterChip(
+                        key: ValueKey('chart-filter-${p.id}'),
+                        avatar: SeriesKey(
+                          color: SeriesColors.of(context, p.colorSlot ?? i),
+                          dash: seriesDash(p.colorSlot ?? i),
+                        ),
+                        showCheckmark: false,
+                        label: Text(p.name),
+                        selected: !_hidden.contains(p.id),
+                        onSelected: (on) => setState(
+                          () => on ? _hidden.remove(p.id) : _hidden.add(p.id),
+                        ),
                       ),
-                      showCheckmark: false,
-                      label: Text(p.name),
-                      selected: !_hidden.contains(p.id),
-                      onSelected: (on) => setState(
-                        () => on ? _hidden.remove(p.id) : _hidden.add(p.id),
-                      ),
-                    ),
-                ],
+                    ],
+                  ],
+                ),
               ),
             ],
           ],
@@ -376,7 +381,7 @@ class _Legend extends StatelessWidget {
           ),
         item(
           SeriesKey(color: scheme.onSurfaceVariant, dash: const [4, 3]),
-          'Prediction (tap below to hide)',
+          'Prediction · tap a name to hide it',
         ),
       ],
     );

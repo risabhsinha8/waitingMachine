@@ -137,7 +137,12 @@ void main() {
       find.descendant(of: row, matching: find.text('7-day trend')),
       findsOne,
     );
-    // Newest first.
+    // Newest first. The trend card sits above, so bring every row into view.
+    await tester.drag(
+      find.byKey(const Key('weight-log-list')),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
     final rows = app.weightLogs.reversed
         .map((l) => tester.getTopLeft(find.byKey(ValueKey('log-row-${l.id}'))))
         .map((o) => o.dy)
