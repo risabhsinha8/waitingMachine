@@ -182,6 +182,40 @@ void main() {
     });
   });
 
+  group('unreadable storage', () {
+    Future<SharedPreferences> seeded(Map<String, Object> values) async {
+      SharedPreferences.setMockInitialValues(values);
+      return SharedPreferences.getInstance();
+    }
+
+    test('corrupt JSON starts empty and keeps the original aside', () async {
+      final prefs = await seeded({
+        'losertown.v1.profile': '{not json',
+        'losertown.v1.weightLogs': '[oops',
+      });
+      final state = AppState(prefs);
+      expect(state.userProfile, isNull);
+      expect(state.weightLogs, isEmpty);
+      await pumpEventQueue();
+      expect(prefs.getString('losertown.v1.profile.unreadable'), '{not json');
+      expect(prefs.getString('losertown.v1.weightLogs.unreadable'), '[oops');
+      expect(prefs.getString('losertown.v1.profile'), isNull);
+    });
+
+    test('a bad entry is skipped without losing the good ones', () async {
+      final good = WeightLog(id: 'a', date: DateTime(2026, 1, 1), weightKg: 80);
+      final raw = jsonEncode([
+        good.toJson(),
+        {'id': 'b'},
+      ]);
+      final prefs = await seeded({'losertown.v1.weightLogs': raw});
+      final state = AppState(prefs);
+      expect(state.weightLogs, [good]);
+      await pumpEventQueue();
+      expect(prefs.getString('losertown.v1.weightLogs.unreadable'), raw);
+    });
+  });
+
   group('bulk data', () {
     test('replaceAll swaps everything and persists', () async {
       final state = await createState();

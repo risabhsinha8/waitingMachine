@@ -9,10 +9,18 @@ tracking.
 - 7-day EMA trend weight and 14-day pace, with implied daily intake
 - Up to 4 predictions compete in the Arena at once; the rest are archived with
   full history
-- kg/lbs, light/dark, checkpoints, demo data
+- kg/lbs, light/dark, goal-date checkpoints, phone and desktop layouts
+- Weigh-in reminders (Android/iOS) at 9am on each checkpoint, and on each day
+  an Arena prediction said you'd reach its target or cross a round number;
+  tapping one opens the weight entry sheet
 
 All data stays on the device: `shared_preferences` (browser `localStorage` on
-the web). Nothing is sent anywhere.
+the web). Nothing is sent anywhere. If saved data can't be read (say, after a
+corrupted write), the app starts without it and keeps the original under a
+`<key>.unreadable` entry instead of overwriting it.
+
+Projections are estimates, not medical advice; the app says so on first
+launch and warns about very aggressive or very low-calorie plans.
 
 ## Run locally
 

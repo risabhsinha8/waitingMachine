@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:losertown/app.dart';
 import 'package:losertown/models/app_models.dart';
-import 'package:losertown/services/demo_data.dart';
 import 'package:losertown/state/app_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/sample_data.dart';
 
 const profile = UserProfile(heightCm: 180, age: 35, sex: Sex.male);
 final today = DateTime(2026, 10, 26, 9);
@@ -66,42 +67,23 @@ Future<void> tapInSheet(WidgetTester tester, Key key) async {
 Finder visible(Finder f) => f.hitTestable();
 
 void main() {
-  group('demo data', () {
-    testWidgets('loads from the first-launch sheet without a prompt', (
-      tester,
-    ) async {
+  group('first launch', () {
+    testWidgets('welcomes the user and has no demo shortcut', (tester) async {
       final app = await makeState(withProfile: false);
       await pumpApp(tester, app);
+      expect(find.text('Welcome to Losertown'), findsOneWidget);
       expect(find.text('Your baseline'), findsOneWidget);
-
-      await tapInSheet(tester, const Key('load-demo'));
-
-      expect(app.predictions, hasLength(3));
-      expect(app.weightLogs, hasLength(DemoData.days));
-      expect(app.userProfile, isNotNull);
-      expect(find.text('Your baseline'), findsNothing);
-      expect(find.text('Loaded demo: 3 predictions, 30 weigh-ins'), findsOne);
-
-      await openTab(tester, 'The Arena');
-      expect(find.text('‘Sustainable 1850 kcal’'), findsOneWidget);
+      expect(find.byKey(const Key('load-demo')), findsNothing);
+      expect(find.byKey(const Key('reset-all')), findsNothing);
     });
 
-    testWidgets('asks before replacing existing data', (tester) async {
+    testWidgets('editing the profile offers reset but no demo', (tester) async {
       final app = await makeState();
-      await app.addWeightLog(100);
       await pumpApp(tester, app);
       await openProfileSheet(tester);
-
-      await tapInSheet(tester, const Key('load-demo'));
-      expect(find.text('Load demo data?'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(app.weightLogs.single.weightKg, 100);
-
-      await tapInSheet(tester, const Key('load-demo'));
-      await tester.tap(find.byKey(const Key('confirm-dialog-ok')));
-      await tester.pumpAndSettle();
-      expect(app.weightLogs, hasLength(DemoData.days));
+      expect(find.text('Welcome to Losertown'), findsNothing);
+      expect(find.byKey(const Key('load-demo')), findsNothing);
+      expect(find.byKey(const Key('reset-all')), findsOneWidget);
     });
   });
 
@@ -127,19 +109,19 @@ void main() {
   });
 
   group('checkpoints', () {
-    Future<AppState> demoState() async {
+    Future<AppState> sampleState() async {
       final app = await makeState();
-      final demo = DemoData.build(now: today);
+      final sample = SampleData.build(now: today);
       await app.replaceAll(
-        profile: demo.profile,
-        predictions: demo.predictions,
-        weightLogs: demo.weightLogs,
+        profile: sample.profile,
+        predictions: sample.predictions,
+        weightLogs: sample.weightLogs,
       );
       return app;
     }
 
     testWidgets('pin a goal date and see it on every card', (tester) async {
-      final app = await demoState();
+      final app = await sampleState();
       final haptics = await pumpApp(tester, app, size: const Size(1080, 9000));
       await openTab(tester, 'The Arena');
       expect(find.byKey(const Key('checkpoint-row')), findsNothing);
@@ -170,7 +152,7 @@ void main() {
     });
 
     testWidgets('at most three, removable with undo', (tester) async {
-      final app = await demoState();
+      final app = await sampleState();
       for (final (label, day) in [('A', 1), ('B', 2), ('C', 3)]) {
         await app.addCheckpoint(label, DateTime(2026, 12, day));
       }
@@ -244,7 +226,8 @@ void main() {
       await tester.pump();
       expect(tester.testTextInput.isVisible, isTrue);
 
-      await tester.tap(find.text('History'));
+      // Plain text under the field (History is now below the fold).
+      await tester.tap(find.textContaining('Already logged'));
       await tester.pump();
       expect(tester.testTextInput.isVisible, isFalse);
     });

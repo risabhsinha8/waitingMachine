@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../state/app_state_scope.dart';
 import '../state/simulator_controller.dart';
 import '../widgets/profile_sheet.dart';
+import '../widgets/quick_log.dart';
 import '../models/app_models.dart';
 import 'arena/arena_screen.dart';
 import 'simulator/lock_in.dart';
@@ -12,7 +14,12 @@ import 'weight_log_screen.dart';
 enum HomeTab { simulator, arena, weightLog }
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({super.key, this.reminderTaps});
+
+  /// Ticks when the user opens a weigh-in reminder, which takes them to the
+  /// Weight Log with the entry sheet open. A value above zero at startup
+  /// means the app was launched from one.
+  final ValueListenable<int>? reminderTaps;
 
   /// At or above this width the tabs move into a side rail.
   static const double railBreakpoint = 840;
@@ -58,14 +65,36 @@ class _HomeShellState extends State<HomeShell>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && AppStateScope.read(context).userProfile == null) {
+      if (!mounted) return;
+      if (AppStateScope.read(context).userProfile == null) {
         showProfileSheet(context);
+      } else if ((widget.reminderTaps?.value ?? 0) > 0) {
+        _openFromReminder();
       }
     });
+    widget.reminderTaps?.addListener(_openFromReminder);
+  }
+
+  @override
+  void didUpdateWidget(HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reminderTaps != widget.reminderTaps) {
+      oldWidget.reminderTaps?.removeListener(_openFromReminder);
+      widget.reminderTaps?.addListener(_openFromReminder);
+    }
+  }
+
+  void _openFromReminder() {
+    if (!mounted || AppStateScope.read(context).userProfile == null) return;
+    // Close any sheet or dialog left open, so the entry sheet isn't stacked.
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    _select(HomeTab.weightLog);
+    showQuickLogSheet(context);
   }
 
   @override
   void dispose() {
+    widget.reminderTaps?.removeListener(_openFromReminder);
     _simulator.dispose();
     _showLockInFab.dispose();
     _fade.dispose();

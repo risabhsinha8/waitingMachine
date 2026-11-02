@@ -154,6 +154,41 @@ void main() {
     expect(find.text('88.0 kg'), findsWidgets);
   });
 
+  testWidgets('weight slider stops at 110 kg; typing goes up to 150', (
+    tester,
+  ) async {
+    await pumpApp(tester, await makeState(loggedKg: 92.4));
+    Slider slider() => tester.widget<Slider>(sliderIn('start-weight'));
+    expect(slider().max, 110);
+
+    await tester.tap(find.text('92.4 kg').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '151');
+    await tester.tap(find.text('Set'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter 35.0–150.0 kg'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '140');
+    await tester.tap(find.text('Set'));
+    await tester.pumpAndSettle();
+    expect(find.text('140.0 kg'), findsWidgets);
+    // The thumb sits at the end of the track for weights above its range.
+    expect(slider().value, 110);
+  });
+
+  testWidgets('a heavier weigh-in starts the simulator at 150 kg at most', (
+    tester,
+  ) async {
+    await pumpApp(tester, await makeState(loggedKg: 180));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('start-weight')),
+        matching: find.text('150.0 kg'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('milestone and target rows are highlighted', (tester) async {
     await pumpApp(tester, await makeState(loggedKg: 100));
     await tapVisible(tester, find.byKey(const Key('target-switch')));

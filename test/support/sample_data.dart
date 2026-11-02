@@ -2,13 +2,13 @@ import 'dart:math' as math;
 
 import 'package:uuid/uuid.dart';
 
-import '../models/app_models.dart';
-import 'losertown_math.dart';
+import 'package:losertown/models/app_models.dart';
+import 'package:losertown/services/losertown_math.dart';
 
-/// A realistic 30-day history for demos: three predictions locked in a month
+/// A realistic 30-day history for widget tests: three predictions locked in a month
 /// ago at 85 kg, and daily weigh-ins that follow "Sustainable 1850 kcal".
-class DemoData {
-  const DemoData._({
+class SampleData {
+  const SampleData._({
     required this.profile,
     required this.predictions,
     required this.weightLogs,
@@ -38,7 +38,7 @@ class DemoData {
 
   /// Deterministic for a given [seed], so demos and tests are repeatable.
   /// Keeps the caller's display [unit].
-  static DemoData build({
+  static SampleData build({
     required DateTime now,
     WeightUnit unit = WeightUnit.kg,
     Uuid uuid = const Uuid(),
@@ -92,7 +92,7 @@ class DemoData {
     }
 
     final today = DateTime(now.year, now.month, now.day);
-    return DemoData._(
+    return SampleData._(
       profile: profile,
       predictions: predictions,
       weightLogs: logs,

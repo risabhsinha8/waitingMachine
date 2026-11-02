@@ -12,6 +12,7 @@ import '../ui/labels.dart';
 import '../utils/units.dart';
 import '../widgets/layout.dart';
 import '../widgets/quick_log.dart';
+import '../widgets/rank_card.dart';
 import '../widgets/weight_entry_form.dart';
 
 /// Tab 3: log a weigh-in and review raw vs. trend history.
@@ -42,13 +43,20 @@ class WeightLogScreen extends StatelessWidget {
         itemCount: logs.length + 2,
         itemBuilder: (context, index) {
           if (index == 0) {
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: WeightEntryForm(
-                  onSaved: (log) => showLoggedSnackBar(context, log),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const RankCard(),
+                if (app.userProfile != null) const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WeightEntryForm(
+                      onSaved: (log) => showLoggedSnackBar(context, log),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             );
           }
           if (index == 1) {

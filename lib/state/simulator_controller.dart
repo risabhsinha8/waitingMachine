@@ -12,7 +12,10 @@ import 'app_state.dart';
 class SimulatorController extends ChangeNotifier {
   SimulatorController(this._app, {DateTime Function()? clock})
     : _clock = clock ?? DateTime.now {
-    _startWeightKg = _app.latestLoggedWeightKg ?? defaultStartWeightKg;
+    _startWeightKg = (_app.latestLoggedWeightKg ?? defaultStartWeightKg).clamp(
+      minWeightKg,
+      maxWeightKg,
+    );
     _syncedLatestKg = _app.latestLoggedWeightKg;
     _profile = _app.userProfile;
     _unit = _app.unit;
@@ -23,7 +26,13 @@ class SimulatorController extends ChangeNotifier {
   static const double defaultStartWeightKg = 80;
   static const double defaultDailyCalories = 2000;
   static const double minWeightKg = 35;
-  static const double maxWeightKg = 250;
+
+  /// Highest weight that can be typed in (and that inputs are clamped to).
+  static const double maxWeightKg = 150;
+
+  /// Weight sliders stop here so the common range gets the slider's full
+  /// width; heavier weights are typed in.
+  static const double maxSliderWeightKg = 110;
   static const double minCalories = 1000;
   static const double maxCalories = 4500;
   static const double calorieStep = 10;

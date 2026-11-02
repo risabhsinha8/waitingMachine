@@ -13,6 +13,9 @@ abstract final class Haptics {
   /// Something was saved: a weigh-in, a prediction, a checkpoint.
   static void saved() => _fire(HapticFeedback.mediumImpact());
 
+  /// A weigh-in earned a new rank.
+  static void levelUp() => _fire(HapticFeedback.heavyImpact());
+
   /// Something was deleted.
   static void deleted() => _fire(HapticFeedback.lightImpact());
 

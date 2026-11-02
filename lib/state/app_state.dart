@@ -477,7 +477,7 @@ class AppState extends ChangeNotifier {
   // Bulk data
   // ---------------------------------------------------------------------------
 
-  /// Replaces everything at once (e.g. demo data), with one notification.
+  /// Replaces everything at once, with one notification.
   Future<void> replaceAll({
     required UserProfile profile,
     required List<PredictionSnapshot> predictions,
@@ -535,38 +535,62 @@ class AppState extends ChangeNotifier {
   // Persistence
   // ---------------------------------------------------------------------------
 
+  /// Loads saved data. Anything that can't be read (corrupted storage, or
+  /// data from an incompatible version) is set aside under a `.unreadable`
+  /// key rather than crashing the app or being silently overwritten.
   void _restore() {
     final profileJson = _prefs.getString(_profileKey);
     if (profileJson != null) {
-      _userProfile = UserProfile.fromJson(
-        jsonDecode(profileJson) as Map<String, dynamic>,
-      );
+      try {
+        _userProfile = UserProfile.fromJson(
+          jsonDecode(profileJson) as Map<String, dynamic>,
+        );
+      } catch (_) {
+        _setAside(_profileKey, profileJson);
+      }
     }
-    final saved = _decodeList(
-      _prefs.getString(_predictionsKey),
-      PredictionSnapshot.fromJson,
-    );
+    final saved = _decodeList(_predictionsKey, PredictionSnapshot.fromJson);
     _predictions = _normalized(saved);
     if (!listEquals(saved, _predictions)) unawaited(_savePredictions());
-    _weightLogs = _decodeList(
-      _prefs.getString(_weightLogsKey),
-      WeightLog.fromJson,
-    )..sort((a, b) => a.date.compareTo(b.date));
-    _checkpoints = _decodeList(
-      _prefs.getString(_checkpointsKey),
-      Checkpoint.fromJson,
-    )..sort((a, b) => a.date.compareTo(b.date));
+    _weightLogs = _decodeList(_weightLogsKey, WeightLog.fromJson)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    _checkpoints = _decodeList(_checkpointsKey, Checkpoint.fromJson)
+      ..sort((a, b) => a.date.compareTo(b.date));
   }
 
-  static List<T> _decodeList<T>(
-    String? raw,
+  /// Keeps unreadable data out of the way, so the next save can't destroy it.
+  void _setAside(String key, String raw) {
+    unawaited(_prefs.setString('$key.unreadable', raw));
+    unawaited(_prefs.remove(key));
+  }
+
+  /// Decodes the list stored under [key], skipping entries that don't
+  /// parse; if any are skipped, the original is set aside first.
+  List<T> _decodeList<T>(
+    String key,
     T Function(Map<String, dynamic>) fromJson,
   ) {
+    final raw = _prefs.getString(key);
     if (raw == null) return [];
-    return [
-      for (final item in jsonDecode(raw) as List)
-        fromJson(item as Map<String, dynamic>),
-    ];
+    final List<dynamic> items;
+    try {
+      items = jsonDecode(raw) as List;
+    } catch (_) {
+      _setAside(key, raw);
+      return [];
+    }
+    final decoded = <T>[];
+    for (final item in items) {
+      try {
+        decoded.add(fromJson(item as Map<String, dynamic>));
+      } catch (_) {
+        // Skipped below.
+      }
+    }
+    if (decoded.length != items.length) {
+      unawaited(_prefs.setString('$key.unreadable', raw));
+    }
+    return decoded;
   }
 
   Future<void> _savePredictions() => _prefs.setString(

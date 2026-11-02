@@ -214,10 +214,15 @@ class _WeightSlider extends StatelessWidget {
       unit,
     ).ceilToDouble();
     final max = Units.fromKg(
+      SimulatorController.maxSliderWeightKg,
+      unit,
+    ).floorToDouble();
+    final typedMax = Units.fromKg(
       SimulatorController.maxWeightKg,
       unit,
     ).floorToDouble();
     final step = unit == WeightUnit.kg ? 0.5 : 1.0;
+    // A typed weight above the slider's range pins the thumb at the end.
     final display = Units.fromKg(valueKg, unit).clamp(min, max);
     return _LabeledSlider(
       label: label,
@@ -229,7 +234,7 @@ class _WeightSlider extends StatelessWidget {
           suffix: unit.wireValue,
           initial: Units.fromKg(valueKg, unit),
           min: min,
-          max: max,
+          max: typedMax,
         );
         if (value != null) onChanged(Units.toKg(value, unit));
       },

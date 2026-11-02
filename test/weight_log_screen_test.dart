@@ -53,6 +53,22 @@ Future<List<MethodCall>> pumpApp(
 
 Finder visible(Finder f) => f.hitTestable();
 
+/// Scrolls the weight log until [finder] is on screen.
+Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    200,
+    // The list's own Scrollable; text fields inside it have theirs too.
+    scrollable: find
+        .descendant(
+          of: find.byKey(const Key('weight-log-list')),
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  await tester.pumpAndSettle();
+}
+
 bool hadMediumImpact(List<MethodCall> calls) => calls.any(
   (c) =>
       c.method == 'HapticFeedback.vibrate' &&
@@ -119,6 +135,8 @@ void main() {
     final smoothed = LosertownMath.smoothWeights(app.weightLogs);
     final newest = app.weightLogs.last;
     final row = find.byKey(ValueKey('log-row-${newest.id}'));
+    // The rank card and entry form sit above the history.
+    await scrollTo(tester, row);
     expect(
       find.descendant(of: row, matching: find.text('80.4 kg')),
       findsOneWidget,
@@ -137,12 +155,11 @@ void main() {
       find.descendant(of: row, matching: find.text('7-day trend')),
       findsOne,
     );
-    // Newest first. The trend card sits above, so bring every row into view.
-    await tester.drag(
-      find.byKey(const Key('weight-log-list')),
-      const Offset(0, -300),
+    // Newest first.
+    await scrollTo(
+      tester,
+      find.byKey(ValueKey('log-row-${app.weightLogs.first.id}')),
     );
-    await tester.pumpAndSettle();
     final rows = app.weightLogs.reversed
         .map((l) => tester.getTopLeft(find.byKey(ValueKey('log-row-${l.id}'))))
         .map((o) => o.dy)
@@ -154,6 +171,7 @@ void main() {
     final app = await makeState(logs: [(-1, 80), (0, 18)]);
     await pumpApp(tester, app);
     final typo = app.weightLogs.last;
+    await scrollTo(tester, find.byKey(ValueKey('log-row-${typo.id}')));
 
     await tester.drag(
       find.byKey(ValueKey('log-row-${typo.id}')),
@@ -187,5 +205,75 @@ void main() {
     expect(app.weightLogs.single.weightKg, 90);
     expect(hadMediumImpact(calls), isTrue);
     expect(find.text('Log weight'), findsNothing); // sheet closed
+  });
+
+  group('rank card', () {
+    testWidgets('is a mystery until the first weigh-in', (tester) async {
+      await pumpApp(tester, await makeState());
+      expect(find.byKey(const Key('rank-card')), findsOneWidget);
+      expect(find.text('Rank unknown'.toUpperCase()), findsOneWidget);
+      expect(find.text('Mystery Hero'), findsOneWidget);
+      expect(find.byKey(const Key('rank-progress')), findsNothing);
+    });
+
+    testWidgets('shows the rank and what it takes to rank up', (tester) async {
+      // 87.5 kg at 180 cm: BMI 27.0, Elite Ranger; Legend below 81 kg.
+      await pumpApp(tester, await makeState(logs: [(0, 87.5)]));
+      expect(find.text('Elite Ranger'), findsOneWidget);
+      expect(find.text('LEVEL 5 OF 6'), findsOneWidget);
+      expect(find.text('BMI 27.0'), findsOneWidget);
+      expect(
+        find.text('Lose 6.5 kg to become Legend of Losertown'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('tapping it opens the ladder with your rank marked', (
+      tester,
+    ) async {
+      await pumpApp(tester, await makeState(logs: [(0, 87.5)]));
+      await tester.tap(find.byKey(const Key('rank-card')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('rank-ladder')), findsOneWidget);
+      final mine = find.byKey(const ValueKey('ladder-eliteRanger'));
+      expect(
+        find.descendant(of: mine, matching: find.text('You')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: mine,
+          matching: find.text('81 kg – 89 kg · BMI 25–27.5'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a weigh-in that ranks up says so, with a big haptic', (
+      tester,
+    ) async {
+      // BMI 27.6: Journeyman Burner, one level below Elite Ranger.
+      final app = await makeState(logs: [(-1, 89.5)]);
+      final calls = await pumpApp(tester, app);
+      expect(find.text('Journeyman Burner'), findsOneWidget);
+
+      await tester.enterText(
+        visible(find.byKey(const Key('log-weight-input'))),
+        '85',
+      );
+      await tester.tap(visible(find.byKey(const Key('log-weight-save'))));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Level up! You’re now Elite Ranger · Logged 85.0 kg'),
+        findsOneWidget,
+      );
+      expect(find.text('Elite Ranger'), findsOneWidget);
+      expect(
+        calls.any((c) => c.arguments == 'HapticFeedbackType.heavyImpact'),
+        isTrue,
+      );
+    });
   });
 }

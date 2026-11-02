@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/app_models.dart';
 import '../state/app_state_scope.dart';
 import '../utils/units.dart';
+import '../ui/haptics.dart';
+import 'rank_card.dart';
 import 'weight_entry_form.dart';
 
 /// The `+` AppBar action shared by every tab.
@@ -54,14 +56,33 @@ Future<void> showQuickLogSheet(BuildContext context) =>
       ),
     );
 
-/// Confirms a weigh-in with an Undo that removes it again.
+/// Confirms a weigh-in with an Undo that removes it again, and celebrates
+/// when it moves the user up a rank.
 void showLoggedSnackBar(BuildContext context, WeightLog log) {
   final app = AppStateScope.read(context);
+  final before = rankStatusOf(app, excludingLogId: log.id)?.rank;
+  final after = rankStatusOf(app)?.rank;
+  final levelUp = before != null && after != null && after.level > before.level;
+  if (levelUp) Haptics.levelUp();
+  final logged = 'Logged ${Units.format(log.weightKg, app.unit)}';
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text('Logged ${Units.format(log.weightKg, app.unit)}'),
+        content: levelUp
+            ? Row(
+                children: [
+                  Icon(after.icon, color: after.color),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Level up! You’re now ${after.title} · $logged',
+                      key: const Key('level-up-message'),
+                    ),
+                  ),
+                ],
+              )
+            : Text(logged),
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () => app.deleteWeightLog(log.id),

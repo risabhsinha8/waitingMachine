@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/app_models.dart';
-import '../services/demo_data.dart';
 import '../state/app_state_scope.dart';
 import '../ui/haptics.dart';
 import '../ui/keyboard.dart';
@@ -106,41 +105,6 @@ class _ProfileSheetState extends State<ProfileSheet> {
     if (mounted) Navigator.pop(context);
   }
 
-  Future<void> _loadDemo() async {
-    dismissKeyboard(context);
-    final app = AppStateScope.read(context);
-    if (app.hasAnyData &&
-        !await showConfirmDialog(
-          context,
-          title: 'Load demo data?',
-          message:
-              'This replaces your profile, predictions, weigh-ins and '
-              'checkpoints with a realistic 30-day demo.',
-          confirmLabel: 'Load demo',
-        )) {
-      return;
-    }
-    final demo = DemoData.build(now: app.now(), unit: app.unit);
-    await app.replaceAll(
-      profile: demo.profile,
-      predictions: demo.predictions,
-      weightLogs: demo.weightLogs,
-      checkpoints: demo.checkpoints,
-    );
-    Haptics.saved();
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    Navigator.pop(context);
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          'Loaded demo: ${demo.predictions.length} predictions, '
-          '${demo.weightLogs.length} weigh-ins',
-        ),
-      ),
-    );
-  }
-
   Future<void> _resetAll() async {
     dismissKeyboard(context);
     final app = AppStateScope.read(context);
@@ -167,14 +131,6 @@ class _ProfileSheetState extends State<ProfileSheet> {
   /// Whether this is the first-launch setup rather than an edit.
   late final bool _firstRun = AppStateScope.read(context).userProfile == null;
 
-  Widget _demoButton({ButtonStyle? style}) => OutlinedButton.icon(
-    key: const Key('load-demo'),
-    onPressed: _loadDemo,
-    style: style,
-    icon: const Icon(Icons.science_outlined),
-    label: const Text('Load Realistic 30-Day Demo Data'),
-  );
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -195,20 +151,7 @@ class _ProfileSheetState extends State<ProfileSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_firstRun) ...[
-                _Welcome(
-                  onLoadDemo: _demoButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: scheme.onPrimaryContainer,
-                      side: BorderSide(
-                        color: scheme.onPrimaryContainer.withValues(alpha: 0.5),
-                      ),
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+              if (_firstRun) ...[const _Welcome(), const SizedBox(height: 24)],
               Text('Your baseline', style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(
@@ -316,18 +259,16 @@ class _ProfileSheetState extends State<ProfileSheet> {
               ),
               if (!_firstRun) ...[
                 const Divider(height: 40),
-                Text('Data', style: theme.textTheme.titleSmall),
+                Text('Your data', style: theme.textTheme.titleSmall),
                 const SizedBox(height: 4),
                 Text(
-                  'Try the app with a month of sample history, or start '
-                  'over. Everything stays on this device.',
+                  'Everything is stored only on this device, in this '
+                  'browser. Nothing is sent anywhere.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _demoButton(),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 TextButton.icon(
                   key: const Key('reset-all'),
                   onPressed: _resetAll,
@@ -346,28 +287,25 @@ class _ProfileSheetState extends State<ProfileSheet> {
   }
 }
 
-/// First-launch intro: what the app does, and a shortcut to demo data.
+/// First-launch intro: what the app does, and what it isn't.
 class _Welcome extends StatelessWidget {
-  const _Welcome({required this.onLoadDemo});
-
-  final Widget onLoadDemo;
+  const _Welcome();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final ink = scheme.onPrimaryContainer;
     Widget step(IconData icon, String text) => Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: scheme.onPrimaryContainer),
+          Icon(icon, size: 20, color: ink),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onPrimaryContainer,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(color: ink),
             ),
           ),
         ],
@@ -384,22 +322,20 @@ class _Welcome extends StatelessWidget {
         children: [
           Text(
             'Welcome to Losertown',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: scheme.onPrimaryContainer,
-            ),
+            style: theme.textTheme.headlineSmall?.copyWith(color: ink),
           ),
           step(Icons.tune, 'Simulate calories and activity'),
           step(Icons.lock_outline, 'Lock in predictions'),
           step(Icons.emoji_events_outlined, 'See which one reality tracks'),
           const SizedBox(height: 16),
           Text(
-            'Just looking around?',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: scheme.onPrimaryContainer,
+            'Projections are estimates, not medical advice. Talk to a '
+            'doctor before starting a diet.',
+            key: const Key('welcome-disclaimer'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: ink.withValues(alpha: 0.8),
             ),
           ),
-          const SizedBox(height: 8),
-          onLoadDemo,
         ],
       ),
     );

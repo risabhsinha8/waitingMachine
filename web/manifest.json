@@ -2,12 +2,15 @@
     "name": "Losertown",
     "short_name": "Losertown",
     "start_url": ".",
+    "scope": ".",
+    "id": ".",
     "display": "standalone",
     "background_color": "#EFF5F2",
     "theme_color": "#00897B",
     "description": "Project your weight-loss timeline, lock in predictions, and see which one reality is actually tracking.",
-    "orientation": "portrait-primary",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": ["health", "fitness", "lifestyle"],
     "icons": [
         {
             "src": "icons/Icon-192.png",
